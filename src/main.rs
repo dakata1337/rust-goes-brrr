@@ -1,10 +1,11 @@
 use dotenv::dotenv;
+use serenity::model::user::OnlineStatus;
 use std::env;
 use std::sync::Arc;
 
 use serenity::async_trait;
 use serenity::model::channel::{Message, ReactionType};
-use serenity::model::gateway::Ready;
+use serenity::model::gateway::{Activity, Ready};
 use serenity::prelude::*;
 
 struct Handler {
@@ -14,8 +15,7 @@ struct Handler {
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        let rust_counter = msg.content.to_lowercase().matches("rust").count();
-        if rust_counter == 0 {
+        if !msg.content.to_lowercase().contains("rust") {
             return;
         }
 
@@ -23,20 +23,27 @@ impl EventHandler for Handler {
             .react(ctx.http, ReactionType::Unicode(String::from("🚀")))
             .await
         {
-            Err(why) => println!("Failed to react with `🚀`: {}", why),
             Ok(_) => {
                 let mut rocket_counter = self.rocket_counter.lock().await;
-                *rocket_counter += rust_counter;
-                println!(
-                    "{} has typed 'Rust' {} time(s). (Total: {})",
-                    msg.author.name, rust_counter, *rocket_counter
+                *rocket_counter += 1;
+                ctx.shard.set_presence(
+                    Some(Activity::watching(format!(
+                        "Rust counter: {}",
+                        *rocket_counter
+                    ))),
+                    OnlineStatus::Online,
                 );
             }
+            Err(why) => println!("Failed to react with `🚀`: {}", why),
         }
     }
 
-    async fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
+        ctx.shard.set_presence(
+            Some(Activity::watching(String::from("for Rust sisters"))),
+            OnlineStatus::Online,
+        );
     }
 }
 
