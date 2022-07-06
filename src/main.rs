@@ -15,7 +15,10 @@ struct Handler {
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        if !msg.content.to_lowercase().contains("rust") {
+        let keywords = env::var("RUST_KEYWORDS")
+            .expect("No RUST_KEYWORDS env variable provided");
+        let mut keywords = keywords.split(",");
+        if !keywords.any(|x| msg.content.to_lowercase().contains(x)) {
             return;
         }
 
